@@ -2,11 +2,13 @@
 -- Run this in Supabase SQL Editor (Dashboard → SQL Editor → New query)
 
 -- Accounts (username + password; recovery key stored for account recovery)
+-- public_key is the RSA public key for E2E encryption (base64 encoded)
 create table if not exists public.haven_accounts (
   id uuid primary key default gen_random_uuid(),
   username text unique not null,
   password text not null,
   recovery_key text unique not null,
+  public_key text, -- RSA-OAEP public key for E2E encryption
   created_at timestamptz default now()
 );
 
@@ -30,12 +32,18 @@ create table if not exists public.haven_notifications (
 );
 
 -- Messages (end-to-end encrypted chat messages)
+-- When encrypted=true, content contains the AES-GCM encrypted message (base64)
+-- encrypted_key is the AES key encrypted with recipient's RSA public key (base64)
+-- iv is the initialization vector for AES-GCM (base64)
 create table if not exists public.haven_messages (
   id text primary key,
   chat_id text not null,
   from_username text not null,
   to_username text not null,
   content text not null,
+  encrypted boolean default false,
+  encrypted_key text, -- AES key encrypted with recipient's RSA public key
+  iv text, -- Initialization vector for AES-GCM
   message_type text default 'text',
   file_name text,
   file_url text,

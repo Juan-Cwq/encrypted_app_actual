@@ -1,8 +1,10 @@
 import { supabase } from '../supabase'
+import { createUserKeys, loadPrivateKey, hasEncryptionKeys } from './crypto'
 
 const ACCOUNTS_KEY = 'haven_accounts'
 const RECOVERY_KEY = 'haven_recovery'
 const SESSION_KEY = 'haven_session'
+const PRIVATE_KEY_CACHE = 'haven_private_key_cache'
 
 function getAccountsLocal() {
   try {
@@ -41,6 +43,12 @@ export async function createAccount(username, password, recoveryKey) {
     return { success: false, error: 'Username, password, and recovery key required' }
   }
 
+  // Generate encryption keys for the user
+  const keyResult = await createUserKeys(normalizedUsername, password)
+  if (!keyResult.success) {
+    return { success: false, error: 'Failed to generate encryption keys' }
+  }
+
   if (supabase) {
     const { data: existing } = await supabase
       .from('haven_accounts')
@@ -54,6 +62,7 @@ export async function createAccount(username, password, recoveryKey) {
       username: normalizedUsername,
       password,
       recovery_key: key,
+      public_key: keyResult.publicKey, // Store public key in database
     })
     if (error) return { success: false, error: error.message }
     return { success: true }
@@ -62,7 +71,11 @@ export async function createAccount(username, password, recoveryKey) {
   const accounts = getAccountsLocal()
   const recovery = getRecoveryIndexLocal()
   if (accounts[normalizedUsername]) return { success: false, error: 'Username already taken' }
-  accounts[normalizedUsername] = { password, recoveryKey: key }
+  accounts[normalizedUsername] = { 
+    password, 
+    recoveryKey: key,
+    publicKey: keyResult.publicKey, // Store public key locally too
+  }
   recovery[key] = normalizedUsername
   localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts))
   localStorage.setItem(RECOVERY_KEY, JSON.stringify(recovery))
@@ -85,7 +98,17 @@ export async function signIn(username, password) {
     if (!data || data.password !== password) {
       return { success: false, error: 'Username or password may be incorrect' }
     }
-    localStorage.setItem(SESSION_KEY, JSON.stringify({ username: data.username }))
+    
+    // Load and cache private key for decryption
+    if (hasEncryptionKeys(normalizedUsername)) {
+      const keyResult = await loadPrivateKey(normalizedUsername, password)
+      if (keyResult.success) {
+        // Store reference to loaded key in session
+        sessionStorage.setItem(PRIVATE_KEY_CACHE, 'loaded')
+      }
+    }
+    
+    localStorage.setItem(SESSION_KEY, JSON.stringify({ username: data.username, password }))
     return { success: true }
   }
 
@@ -94,12 +117,22 @@ export async function signIn(username, password) {
   if (!account || account.password !== password) {
     return { success: false, error: 'Username or password may be incorrect' }
   }
-  localStorage.setItem(SESSION_KEY, JSON.stringify({ username: normalizedUsername }))
+  
+  // Load and cache private key for decryption
+  if (hasEncryptionKeys(normalizedUsername)) {
+    const keyResult = await loadPrivateKey(normalizedUsername, password)
+    if (keyResult.success) {
+      sessionStorage.setItem(PRIVATE_KEY_CACHE, 'loaded')
+    }
+  }
+  
+  localStorage.setItem(SESSION_KEY, JSON.stringify({ username: normalizedUsername, password }))
   return { success: true }
 }
 
 export function signOut() {
   localStorage.removeItem(SESSION_KEY)
+  sessionStorage.removeItem(PRIVATE_KEY_CACHE)
 }
 
 export function getSession() {
@@ -158,4 +191,35 @@ export async function resetPasswordWithRecovery(recoveryKey, newPassword) {
   accounts[username].password = newPassword
   localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts))
   return { success: true, username }
+}
+
+// Get a user's public key for encryption
+export async function getPublicKey(username) {
+  const normalizedUsername = (username || '').trim()
+  if (!normalizedUsername) return null
+
+  if (supabase) {
+    const { data, error } = await supabase
+      .from('haven_accounts')
+      .select('public_key')
+      .eq('username', normalizedUsername)
+      .maybeSingle()
+    if (error || !data) return null
+    return data.public_key
+  }
+
+  const accounts = getAccountsLocal()
+  const account = accounts[normalizedUsername]
+  return account?.publicKey || null
+}
+
+// Get current user's password from session (needed for decryption)
+export function getSessionPassword() {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY)
+    const session = raw ? JSON.parse(raw) : null
+    return session?.password || null
+  } catch {
+    return null
+  }
 }

@@ -1,7 +1,12 @@
 import { supabase } from '../supabase'
+import { encryptMessage, decryptMessage, loadPrivateKey } from './crypto'
+import { getPublicKey, getSession, getSessionPassword } from './auth'
 
 const MESSAGES_KEY = 'haven_messages'
 const CHAT_SETTINGS_KEY = 'haven_chat_settings'
+
+// Cache for decrypted messages (in-memory only, cleared on page reload)
+const decryptedCache = new Map()
 
 // Get messages from localStorage
 function getMessagesLocal() {
@@ -42,9 +47,63 @@ export function getChatId(user1, user2) {
   return [user1, user2].sort().join('__')
 }
 
+// Decrypt a single message
+async function decryptMessageContent(msg, currentUser) {
+  // Check cache first
+  if (decryptedCache.has(msg.id)) {
+    return decryptedCache.get(msg.id)
+  }
+
+  // If message is not encrypted (legacy or plain text), return as-is
+  if (!msg.encrypted || !msg.encryptedKey || !msg.iv) {
+    return msg.content
+  }
+
+  // Only decrypt messages sent TO the current user
+  if (msg.to !== currentUser) {
+    // For messages we sent, we stored the plain content locally
+    return msg.content
+  }
+
+  try {
+    const session = getSession()
+    const password = getSessionPassword()
+    if (!session || !password) {
+      return '[Unable to decrypt - not signed in]'
+    }
+
+    const keyResult = await loadPrivateKey(session.username, password)
+    if (!keyResult.success) {
+      return '[Unable to decrypt - key error]'
+    }
+
+    const result = await decryptMessage(
+      {
+        encryptedMessage: msg.content,
+        encryptedKey: msg.encryptedKey,
+        iv: msg.iv,
+      },
+      keyResult.privateKey
+    )
+
+    if (result.success) {
+      // Cache the decrypted content
+      decryptedCache.set(msg.id, result.message)
+      return result.message
+    }
+
+    return '[Decryption failed]'
+  } catch (error) {
+    console.error('Error decrypting message:', error)
+    return '[Decryption error]'
+  }
+}
+
 // Get messages for a chat
 export async function getMessages(user1, user2) {
   const chatId = getChatId(user1, user2)
+  const session = getSession()
+  const currentUser = session?.username
   
   if (supabase) {
     try {
@@ -69,18 +128,35 @@ export async function getMessages(user1, user2) {
         return now < expiresAt
       })
       
-      return validMessages.map((m) => ({
-        id: m.id,
-        chatId: m.chat_id,
-        from: m.from_username,
-        to: m.to_username,
-        content: m.content,
-        type: m.message_type || 'text',
-        fileName: m.file_name,
-        fileUrl: m.file_url,
-        createdAt: m.created_at,
-        read: m.read,
-      }))
+      // Decrypt messages
+      const decryptedMessages = await Promise.all(
+        validMessages.map(async (m) => {
+          const msgObj = {
+            id: m.id,
+            chatId: m.chat_id,
+            from: m.from_username,
+            to: m.to_username,
+            content: m.content,
+            encrypted: m.encrypted,
+            encryptedKey: m.encrypted_key,
+            iv: m.iv,
+            type: m.message_type || 'text',
+            fileName: m.file_name,
+            fileUrl: m.file_url,
+            createdAt: m.created_at,
+            read: m.read,
+          }
+          
+          // Decrypt if encrypted
+          if (m.encrypted && currentUser) {
+            msgObj.content = await decryptMessageContent(msgObj, currentUser)
+          }
+          
+          return msgObj
+        })
+      )
+      
+      return decryptedMessages
     } catch (err) {
       console.error('Supabase getMessages exception:', err)
       return getMessagesLocal()[chatId] || []
@@ -94,32 +170,73 @@ export async function getMessages(user1, user2) {
   const settings = await getChatSettings(user1, user2)
   const now = Date.now()
   
-  return chatMessages.filter((msg) => {
+  const validMessages = chatMessages.filter((msg) => {
     if (!settings.disappearingEnabled || settings.disappearingDays === 0) return true
     const msgTime = new Date(msg.createdAt).getTime()
     const expiresAt = msgTime + settings.disappearingDays * 24 * 60 * 60 * 1000
     return now < expiresAt
   })
+
+  // Decrypt messages
+  const decryptedMessages = await Promise.all(
+    validMessages.map(async (msg) => {
+      if (msg.encrypted && currentUser) {
+        const decryptedContent = await decryptMessageContent(msg, currentUser)
+        return { ...msg, content: decryptedContent }
+      }
+      return msg
+    })
+  )
+
+  return decryptedMessages
 }
 
-// Send a message
+// Send a message (with E2E encryption)
 export async function sendMessage(from, to, content, type = 'text', fileName = null, fileUrl = null) {
   const chatId = getChatId(from, to)
   const now = new Date().toISOString()
   const id = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
 
+  // Try to encrypt the message
+  let encryptedData = null
+  let isEncrypted = false
+  
+  try {
+    // Get recipient's public key
+    const recipientPublicKey = await getPublicKey(to)
+    
+    if (recipientPublicKey && type === 'text') {
+      // Encrypt the message
+      const encryptResult = await encryptMessage(content, recipientPublicKey)
+      
+      if (encryptResult.success) {
+        encryptedData = encryptResult
+        isEncrypted = true
+      }
+    }
+  } catch (error) {
+    console.error('Encryption error (falling back to plain text):', error)
+  }
+
+  // Message object for local display (always show plain text to sender)
   const message = {
     id,
     chatId,
     from,
     to,
-    content,
+    content, // Plain text for sender's view
+    encrypted: isEncrypted,
+    encryptedKey: encryptedData?.encryptedKey || null,
+    iv: encryptedData?.iv || null,
     type,
     fileName,
     fileUrl,
     createdAt: now,
     read: false,
   }
+
+  // Message object for storage (encrypted content if available)
+  const storageContent = isEncrypted ? encryptedData.encryptedMessage : content
 
   if (supabase) {
     try {
@@ -128,7 +245,10 @@ export async function sendMessage(from, to, content, type = 'text', fileName = n
         chat_id: chatId,
         from_username: from,
         to_username: to,
-        content,
+        content: storageContent,
+        encrypted: isEncrypted,
+        encrypted_key: encryptedData?.encryptedKey || null,
+        iv: encryptedData?.iv || null,
         message_type: type,
         file_name: fileName,
         file_url: fileUrl,
@@ -141,23 +261,26 @@ export async function sendMessage(from, to, content, type = 'text', fileName = n
         // Fall back to localStorage
         const allMessages = getMessagesLocal()
         if (!allMessages[chatId]) allMessages[chatId] = []
-        allMessages[chatId].push(message)
+        allMessages[chatId].push({ ...message, content: storageContent })
         setMessagesLocal(allMessages)
       }
     } catch (err) {
       console.error('Supabase sendMessage exception:', err)
       const allMessages = getMessagesLocal()
       if (!allMessages[chatId]) allMessages[chatId] = []
-      allMessages[chatId].push(message)
+      allMessages[chatId].push({ ...message, content: storageContent })
       setMessagesLocal(allMessages)
     }
   } else {
     const allMessages = getMessagesLocal()
     if (!allMessages[chatId]) allMessages[chatId] = []
-    allMessages[chatId].push(message)
+    // Store encrypted content, but keep plain content for sender's immediate view
+    const storageMessage = { ...message, content: storageContent }
+    allMessages[chatId].push(storageMessage)
     setMessagesLocal(allMessages)
   }
 
+  // Return message with plain text content for immediate display
   return message
 }
 
