@@ -1,0 +1,83 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Haven Brand Colors - Light Mode */
+    --background: 244 244 248; /* #F4F4F8 */
+    --foreground: 210 31% 8%; /* #0D1B2A - Midnight Blue */
+    --card: 0 0% 100%; /* #FFFFFF */
+    --card-foreground: 210 31% 8%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 210 31% 8%;
+    --primary: 210 31% 8%; /* #0D1B2A - Midnight Blue */
+    --primary-foreground: 224 18% 87%; /* #E0E1DD - Ghost White */
+    --secondary: 210 15% 67%; /* #778DA9 - Steel Blue */
+    --secondary-foreground: 210 31% 8%;
+    --muted: 212 20% 65%; /* #A3B1C6 - Fog */
+    --muted-foreground: 210 15% 67%;
+    --accent: 212 20% 65%;
+    --accent-foreground: 210 31% 8%;
+    --destructive: 0 73% 57%; /* #E74C3C - Error */
+    --destructive-foreground: 224 18% 87%;
+    --success: 145 63% 49%; /* #2ECC71 - Success */
+    --warning: 48 89% 50%; /* #F1C40F - Warning */
+    --info: 204 70% 53%; /* #3498DB - Info */
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 210 31% 8%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    /* Haven Brand Colors - Dark Mode */
+    --background: 210 31% 8%; /* #0D1B2A - Midnight Blue */
+    --foreground: 224 18% 87%; /* #E0E1DD - Ghost White */
+    --card: 210 22% 16%; /* #1B263B - Deep Slate */
+    --card-foreground: 224 18% 87%;
+    --popover: 210 22% 16%;
+    --popover-foreground: 224 18% 87%;
+    --primary: 210 15% 67%; /* #778DA9 - Steel Blue */
+    --primary-foreground: 210 31% 8%;
+    --secondary: 210 30% 34%; /* #415A77 - Shadow Blue */
+    --secondary-foreground: 224 18% 87%;
+    --muted: 210 22% 16%;
+    --muted-foreground: 212 20% 65%;
+    --accent: 210 30% 34%;
+    --accent-foreground: 224 18% 87%;
+    --destructive: 0 73% 57%;
+    --destructive-foreground: 224 18% 87%;
+    --success: 145 63% 49%;
+    --warning: 48 89% 50%;
+    --info: 204 70% 53%;
+    --border: 210 30% 34%;
+    --input: 210 30% 34%;
+    --ring: 210 15% 67%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  }
+  .font-serif {
+    font-family: 'DM Serif Display', Georgia, 'Times New Roman', Times, serif;
+  }
+}
+
+@layer utilities {
+  .text-display {
+    font-family: 'DM Serif Display', Georgia, 'Times New Roman', Times, serif;
+  }
+  .text-haven-gradient {
+    background: linear-gradient(120deg, #0D1B2A, #1B263B, #415A77, #778DA9, #E0E1DD);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+}
