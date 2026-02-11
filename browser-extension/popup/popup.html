@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Shield</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="logo-row">
+        <img src="../icons/icon48.png" alt="" class="logo" onerror="this.style.display='none'">
+        <h1>Privacy Shield</h1>
+      </div>
+      <label class="toggle-row master-toggle">
+        <span>Protection</span>
+        <input type="checkbox" id="masterToggle" checked>
+        <span class="slider"></span>
+      </label>
+    </header>
+
+    <div id="disabledOverlay" class="disabled-overlay" style="display:none">
+      <p>Protection is disabled</p>
+    </div>
+
+    <section class="stats">
+      <div class="stat-item">
+        <span class="stat-num" id="blockedCount">0</span>
+        <span class="stat-label">Blocked</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-num" id="fingerprintCount">0</span>
+        <span class="stat-label">Fingerprints</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-num" id="piiCount">0</span>
+        <span class="stat-label">PII Leaks</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-num" id="scriptCount">0</span>
+        <span class="stat-label">Scripts</span>
+      </div>
+    </section>
+
+    <section class="profile-section">
+      <h2 id="siteName">Current Site</h2>
+      <div class="profile-buttons">
+        <button class="profile-btn" data-level="strict">Strict</button>
+        <button class="profile-btn active" data-level="moderate">Moderate</button>
+        <button class="profile-btn" data-level="minimal">Minimal</button>
+      </div>
+    </section>
+
+    <section class="features">
+      <div class="feature-row">
+        <span>Block Trackers</span>
+        <span class="check on">&#10003;</span>
+      </div>
+      <div class="feature-row">
+        <span>Fingerprint Protection</span>
+        <span class="check" id="featFingerprint">&#10003;</span>
+      </div>
+      <div class="feature-row">
+        <span>WebRTC Leak Prevention</span>
+        <span class="check" id="featWebRTC">&#10003;</span>
+      </div>
+      <div class="feature-row">
+        <span>PII Leak Protection</span>
+        <span class="check" id="featPII">&#10003;</span>
+      </div>
+      <div class="feature-row">
+        <span>HTTPS Upgrade</span>
+        <span class="check on">&#10003;</span>
+      </div>
+      <div class="feature-row">
+        <span>Script Analysis</span>
+        <span class="check" id="featScripts">&#10003;</span>
+      </div>
+    </section>
+
+    <footer>
+      <button id="dashboardBtn" class="footer-btn">Full Dashboard</button>
+      <button id="nuclearBtn" class="footer-btn danger">Nuclear Option</button>
+    </footer>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

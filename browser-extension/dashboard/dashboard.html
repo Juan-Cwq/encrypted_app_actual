@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Shield — Dashboard</title>
+  <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Privacy Shield Dashboard</h1>
+      <div class="header-actions">
+        <select id="filterCategory">
+          <option value="">All Categories</option>
+          <option value="tracking">Tracking</option>
+          <option value="fingerprint">Fingerprint</option>
+          <option value="network">Network</option>
+          <option value="form">Form</option>
+          <option value="script">Script</option>
+        </select>
+        <select id="filterTime">
+          <option value="0">All Time</option>
+          <option value="3600000">Last Hour</option>
+          <option value="86400000">Last 24 Hours</option>
+          <option value="604800000">Last 7 Days</option>
+        </select>
+        <input type="text" id="filterDomain" placeholder="Filter by domain...">
+      </div>
+    </header>
+
+    <section class="summary-cards">
+      <div class="card">
+        <span class="card-num" id="totalBlocked">0</span>
+        <span class="card-label">Total Events</span>
+      </div>
+      <div class="card">
+        <span class="card-num" id="totalTracking">0</span>
+        <span class="card-label">Trackers Blocked</span>
+      </div>
+      <div class="card">
+        <span class="card-num" id="totalFingerprint">0</span>
+        <span class="card-label">Fingerprint Defenses</span>
+      </div>
+      <div class="card">
+        <span class="card-num" id="totalPII">0</span>
+        <span class="card-label">PII Leaks Prevented</span>
+      </div>
+      <div class="card">
+        <span class="card-num" id="totalScripts">0</span>
+        <span class="card-label">Scripts Analyzed</span>
+      </div>
+      <div class="card">
+        <span class="card-num" id="uniqueDomains">0</span>
+        <span class="card-label">Domains Tracked</span>
+      </div>
+    </section>
+
+    <section class="log-section">
+      <div class="log-header">
+        <h2>Event Log</h2>
+        <div class="log-actions">
+          <button id="exportJsonBtn" class="btn">Export JSON</button>
+          <button id="exportCsvBtn" class="btn">Export CSV</button>
+          <button id="clearLogsBtn" class="btn danger">Clear Logs</button>
+          <button id="nuclearBtn" class="btn nuclear">Nuclear Option</button>
+        </div>
+      </div>
+      <table id="logTable">
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Category</th>
+            <th>Action</th>
+            <th>Detail</th>
+            <th>Domain</th>
+          </tr>
+        </thead>
+        <tbody id="logBody">
+        </tbody>
+      </table>
+      <div id="emptyState" class="empty-state">
+        <p>No events recorded yet. Browse the web with Privacy Shield enabled to see activity.</p>
+      </div>
+    </section>
+  </div>
+
+  <script src="dashboard.js"></script>
+</body>
+</html>

@@ -26,3 +26,6 @@ npm-debug.log*
 
 # Cache
 .cache/
+privacy-proxy/certs/haven-ca-key.pem
+privacy-proxy/certs/*.pem
+privacy-proxy/logs/

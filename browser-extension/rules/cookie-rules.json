@@ -1,0 +1,30 @@
+[
+  {
+    "id": 1001,
+    "priority": 1,
+    "action": {
+      "type": "modifyHeaders",
+      "responseHeaders": [
+        { "header": "Set-Cookie", "operation": "remove" }
+      ]
+    },
+    "condition": {
+      "domainType": "thirdParty",
+      "resourceTypes": ["script", "image", "xmlhttprequest", "sub_frame", "ping", "other"]
+    }
+  },
+  {
+    "id": 1002,
+    "priority": 1,
+    "action": {
+      "type": "modifyHeaders",
+      "requestHeaders": [
+        { "header": "Cookie", "operation": "remove" }
+      ]
+    },
+    "condition": {
+      "domainType": "thirdParty",
+      "resourceTypes": ["script", "image", "xmlhttprequest", "sub_frame", "ping", "other"]
+    }
+  }
+]
